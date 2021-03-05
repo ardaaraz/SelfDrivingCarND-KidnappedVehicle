@@ -60,6 +60,29 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
    *  http://en.cppreference.com/w/cpp/numeric/random/normal_distribution
    *  http://www.cplusplus.com/reference/random/default_random_engine/
    */
+  // Predict position and heading angle of each particle using bicycle model
+  double pred_x; // Prediction for Position in x coord.
+  double pred_y; // Prediction for Position in y coord.
+  double pred_theta; // Prediction for Heading Angle
+  std::default_random_engine gen; //Random number engine
+  for(int i = 0; i < num_particles; ++i)
+  {
+    pred_x     = this->particles[i].x + velocity/yaw_rate *
+                 (sin(this->particles[i].theta + yaw_rate*delta_t)
+                 -sin(this->particles[i].theta));
+    pred_y     = this->particles[i].y + velocity/yaw_rate *
+                 (cos(this->particles[i].theta)
+                 -cos(this->particles[i].theta + yaw_rate*delta_t));
+    pred_theta = this->particles[i].theta + yaw_rate * delta_t;
+    // Normal Gaussian distribution for x, y & theta predictions
+    std::normal_distribution<double> dist_x(pred_x, std_pos[0]);
+    std::normal_distribution<double> dist_y(pred_y, std_pos[1]);
+    std::normal_distribution<double> dist_theta(pred_theta, std_pos[2]);
+    // Add random Gaussian noise to predictions
+    this->particles[i].x     = dist_x(gen);
+    this->particles[i].y     = dist_y(gen);
+    this->particles[i].theta = dist_theta(gen);
+  }
 
 }
 
