@@ -83,7 +83,6 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
     this->particles[i].y     = dist_y(gen);
     this->particles[i].theta = dist_theta(gen);
   }
-
 }
 
 void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted, 
@@ -97,7 +96,25 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
    *   during the updateWeights phase.
    */
 
-}
+  // Perform Nearest Neighbor method for Data Association
+  double distance;
+  int id;
+  for(int i = 0; i < observations.size(); ++i)
+  {
+    distance = std::numeric_limits<double>::infinity();
+    for(int j = 0; j < predicted.size(); j++)
+    {
+      double new_dist = dist(observations[i].x, observations[i].y,
+                             predicted[j].x, predicted[j].y);
+      if(new_dist < distance)
+      {
+        id = predicted[j].id;
+        distance = new_dist; 
+      }
+    }
+    observations[i].id = id;
+  }
+ }
 
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[], 
                                    const vector<LandmarkObs> &observations, 
@@ -115,7 +132,71 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    *   and the following is a good resource for the actual equation to implement
    *   (look at equation 3.33) http://planning.cs.uiuc.edu/node99.html
    */
+  // For landmarks (in map frame)
+  vector<LandmarkObs> landmarks_vec;
+  LandmarkObs landmark;
+  // For observations (in map frame)
+  vector<LandmarkObs> observations_vec;
+  LandmarkObs observation;
 
+  // For debug
+  vector<int> associations;
+  vector<double> sense_x;
+  vector<double> sense_y;
+  
+  for(int i = 0; i < this->num_particles; ++i)
+  {
+    for(int j = 0; j < map_landmarks.landmark_list.size(); ++j)
+    {
+      // Check sensor range to eleminate unrelated landmarks
+      if(std::abs(particles[i].x - map_landmarks.landmark_list[j].x_f) <= sensor_range && 
+      std::abs(particles[i].y - map_landmarks.landmark_list[j].y_f) <= sensor_range)
+      {
+        // Related landmarks in map frame
+        landmark.id = map_landmarks.landmark_list[j].id_i;
+        landmark.x  = map_landmarks.landmark_list[j].x_f;
+        landmark.y  = map_landmarks.landmark_list[j].y_f;
+        landmarks_vec.push_back(landmark);
+      }
+    }
+    for(int k = 0; k < observations.size(); ++k)
+    {
+      // Coordinate transformation from vehicle frame to map frame for observations
+      observation.x = particles[i].x + (cos(particles[i].theta) * observations[k].x) - 
+                      (sin(particles[i].theta) * observations[k].y);
+      observation.y = particles[i].y + (sin(particles[i].theta) * observations[k].x) + 
+                      (cos(particles[i].theta) * observations[k].y);
+      observations_vec.push_back(observation);
+    }
+    dataAssociation(landmarks_vec, observations_vec);
+    for(int l = 0; l < observations_vec.size(); ++l)
+    {
+      for(int m = 0; m < landmarks_vec.size(); ++m)
+      {
+        if(observations_vec[l].id == landmarks_vec[m].id)
+        {
+          float term1          = 1 / (2*M_PI*std_landmark[0]*std_landmark[1]);
+          float term2_1        = pow(observations_vec[l].x - landmarks_vec[m].x, 2) 
+                                 / (2*std_landmark[0]*std_landmark[0]);
+          float term2_2        = pow(observations_vec[l].y - landmarks_vec[m].y, 2) 
+                                 / (2*std_landmark[1]*std_landmark[1]);
+          particles[i].weight *= term1 * exp(-(term2_1 + term2_2));
+          
+          associations.push_back(landmarks_vec[m].id);
+          sense_x.push_back(observations_vec[l].x);
+          sense_y.push_back(observations_vec[l].y);
+          break;
+        }
+      }
+    }
+    SetAssociations(particles[i], associations, sense_x, sense_y);
+    
+    associations.clear();
+    sense_x.clear();
+    sense_y.clear();
+    landmarks_vec.clear();
+    observations_vec.clear();
+  }
 }
 
 void ParticleFilter::resample() {
