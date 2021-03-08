@@ -143,7 +143,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   vector<int> associations;
   vector<double> sense_x;
   vector<double> sense_y;
-  
+  this->weights.clear();
   for(int i = 0; i < this->num_particles; ++i)
   {
     for(int j = 0; j < map_landmarks.landmark_list.size(); ++j)
@@ -196,7 +196,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     sense_y.clear();
     landmarks_vec.clear();
     observations_vec.clear();
-  }
+    this->weights.push_back(particles[i].weight);
+  }  
 }
 
 void ParticleFilter::resample() {
