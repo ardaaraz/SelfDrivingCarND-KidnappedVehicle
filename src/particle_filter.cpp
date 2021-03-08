@@ -110,7 +110,7 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
   int id;
   for(int i = 0; i < observations.size(); ++i)
   {
-    distance = std::numeric_limits<double>::infinity();
+    distance = std::numeric_limits<double>::max();
     for(int j = 0; j < predicted.size(); j++)
     {
       double new_dist = dist(observations[i].x, observations[i].y,
@@ -178,6 +178,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       observations_vec.push_back(observation);
     }
     dataAssociation(landmarks_vec, observations_vec);
+
+    // Reinit particle weight 
+    particles[i].weight = 1;
+
     for(int l = 0; l < observations_vec.size(); ++l)
     {
       for(int m = 0; m < landmarks_vec.size(); ++m)
