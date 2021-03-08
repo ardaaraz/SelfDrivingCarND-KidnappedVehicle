@@ -30,7 +30,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
    * NOTE: Consult particle_filter.h for more information about this method 
    *   (and others in this file).
    */
-  num_particles = 100;  // TODO: Set the number of particles
+  num_particles = 1000;  // TODO: Set the number of particles
   std::default_random_engine gen; //Random number engine
   // Normal Gaussian distribution for x, y & theta
   std::normal_distribution<double> dist_x(x, std[0]);
@@ -67,13 +67,22 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
   std::default_random_engine gen; //Random number engine
   for(int i = 0; i < num_particles; ++i)
   {
-    pred_x     = this->particles[i].x + velocity/yaw_rate *
-                 (sin(this->particles[i].theta + yaw_rate*delta_t)
-                 -sin(this->particles[i].theta));
-    pred_y     = this->particles[i].y + velocity/yaw_rate *
-                 (cos(this->particles[i].theta)
-                 -cos(this->particles[i].theta + yaw_rate*delta_t));
-    pred_theta = this->particles[i].theta + yaw_rate * delta_t;
+    // Check yaw rate magnitude
+    if(abs(yaw_rate) < 0.0001)
+    {
+      pred_x = this->particles[i].x + velocity * delta_t * cos(this->particles[i].theta);
+      pred_y = this->particles[i].y + velocity * delta_t * sin(this->particles[i].theta);
+    }
+    else
+    {
+      pred_x     = this->particles[i].x + velocity/yaw_rate *
+                   (sin(this->particles[i].theta + yaw_rate*delta_t)
+                   -sin(this->particles[i].theta));
+      pred_y     = this->particles[i].y + velocity/yaw_rate *
+                   (cos(this->particles[i].theta)
+                   -cos(this->particles[i].theta + yaw_rate*delta_t));
+      pred_theta = this->particles[i].theta + yaw_rate * delta_t;
+    }
     // Normal Gaussian distribution for x, y & theta predictions
     std::normal_distribution<double> dist_x(pred_x, std_pos[0]);
     std::normal_distribution<double> dist_y(pred_y, std_pos[1]);
